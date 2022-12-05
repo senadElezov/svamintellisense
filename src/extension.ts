@@ -27,6 +27,10 @@ import { CRMFetcherController } from './CRMFetcher/CRMFetcherController';
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
+	const terminal = vscode.window.createTerminal("testPath");
+
+	terminal.sendText("")
+
 	let svamComponentIntellisense = new SvamComponentIntellisense();
 	// let cryptedQueryIntellisenseController = new CryptedQueryIntellisenseController();
 	let svamComponentIntellisenseController = new SvamComponentIntellisenseController(svamComponentIntellisense);
