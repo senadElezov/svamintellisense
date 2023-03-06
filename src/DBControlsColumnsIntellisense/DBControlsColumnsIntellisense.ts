@@ -1,12 +1,13 @@
 import { IColumn } from "../Interfaces/IColumn";
 import { IControl } from "../Interfaces/IControl";
 import fetchTableMetaData from "../Utils/fetchTableMetaData";
-import getAllTablesFromDB from "../Utils/getAllTablesFromDB";
+
 import tableMetaToInterface from "../Utils/tableMetaToInterface";
 import * as vscode from 'vscode';
 import generateColumnsString from "../Utils/generateColumnsString";
 import generateControlsString from "../Utils/generateControlsString";
 import { ITableMeta } from "../Interfaces/ITableMeta";
+import { DBType } from '../Types/db-type';
 
 export class DBControlsColumnsIntellisense {
 
@@ -18,7 +19,9 @@ export class DBControlsColumnsIntellisense {
     }
 
     private _controlColumnsCompletionProvider: vscode.Disposable;
-    constructor() {
+    constructor(
+        private _dbType: DBType
+    ) {
         this._controlColumnsCompletionProvider = { dispose: () => { } }
         this._tableDefs = {};
 
@@ -26,7 +29,7 @@ export class DBControlsColumnsIntellisense {
 
     async fetchTableDefs(params?: { dateDefault: string }) {
 
-        const allTableMetaData = await fetchTableMetaData();
+        const allTableMetaData = await fetchTableMetaData(this._dbType);
 
         const tableDict: { [tableName: string]: ITableMeta[] } = {};
 

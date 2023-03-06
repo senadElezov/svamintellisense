@@ -1,31 +1,54 @@
 import * as vscode from 'vscode';
+import { DBType } from '../Types/db-type';
 import { SPParamsToControlsFetcher } from './SPParamsToControlsFetcher';
 
 
 export class SPParamsToControlsFetcherController {
-    private _activationCommand: vscode.Disposable;
-    private _deactivationCommand:vscode.Disposable;
     private _spParamsIntellisense: SPParamsToControlsFetcher;
 
-    constructor() {
-        this._spParamsIntellisense= new SPParamsToControlsFetcher();
-        this._activationCommand = vscode.commands.registerCommand("svamintellisense.activateSPControlsIntellisense", () => {
+    private _dbSpParamsIntellisense: { [dbType in DBType]: {
+        fetcher: SPParamsToControlsFetcher,
+        activateCommandString: string,
+        deactivateCommandString: string,
+        deactivationCommand?: vscode.Disposable,
+        activationCommand?: vscode.Disposable
+    }
+    } = {
+            oo: {
+                fetcher: new SPParamsToControlsFetcher('oo'),
+                activateCommandString: 'svamintellisense.activateSPControlsIntellisense',
+                deactivateCommandString: 'svamintellisense.deactivateSPControlsIntellisense'
+            },
+            op: {
+                fetcher: new SPParamsToControlsFetcher('op'),
+                activateCommandString: 'svamintellisense.activateSPControlsIntellisense.op',
+                deactivateCommandString: 'svamintellisense.deactivateSPControlsIntellisense.op'
+            }
+        }
+    constructor(
+    ) {
+        this._spParamsIntellisense = new SPParamsToControlsFetcher('oo');
 
-            this._spParamsIntellisense.initializeSPParamsIntellisense();
-        });
+        Object.values(this._dbSpParamsIntellisense).forEach(def => {
+            def.activationCommand = vscode.commands.registerCommand(def.activateCommandString, () => {
+                def.fetcher.initializeSPParamsIntellisense();
+            })
 
-        this._deactivationCommand= vscode.commands.registerCommand("svamintellisense.deactivateSPControlsIntellisense", () => {
+            def.deactivationCommand = vscode.commands.registerCommand(def.deactivateCommandString, () => {
+                this._spParamsIntellisense.dispose()
+            })
 
-            this._spParamsIntellisense.dispose()
-            
         })
-        
 
     }
 
     public dispose() {
-        this._spParamsIntellisense.dispose();
-        this._activationCommand.dispose()
-        this._deactivationCommand.dispose();
+
+        Object.values(this._dbSpParamsIntellisense).forEach(({ activationCommand, deactivationCommand, fetcher }) => {
+            fetcher.dispose();
+            activationCommand?.dispose();
+            deactivationCommand?.dispose();
+        })
+
     }
 }

@@ -1,25 +1,40 @@
 import { ViewFetcher } from "./ViewFetcher";
 import * as vscode from 'vscode'
+import { DBType } from '../Types/db-type';
 
 export class ViewFetcherController {
 
-    
-    private _viewFetcher: ViewFetcher;
-    private _activationCommand: vscode.Disposable;
+
+    private _dbViewFetcher: { [dbType in DBType]: {
+        fetcher: ViewFetcher,
+        activationCommandString: string,
+        activationCommand?: vscode.Disposable
+    } } =
+        {
+            oo: {
+                fetcher: new ViewFetcher('oo'),
+                activationCommandString: 'svamintellisense.fetchViewModel'
+            },
+            op: {
+                fetcher: new ViewFetcher('op'),
+                activationCommandString: 'svamintellisense.fetchViewModel.op'
+            }
+        }
 
     constructor() {
-        this._viewFetcher = new ViewFetcher();
 
-        this._activationCommand = vscode.commands.registerCommand("svamintellisense.fetchViewModel", () => {
-            
-            this._viewFetcher.generateViewModel();
+        Object.values(this._dbViewFetcher)
+            .forEach(def => {
+                def.activationCommand = vscode.commands.registerCommand(def.activationCommandString, () => {
+                    def.fetcher.generateViewModel();
+                });
+            })
 
-        });
     }
 
     public dispose() {
-        this._activationCommand.dispose();
+        Object.values(this._dbViewFetcher).forEach(({ activationCommand }) => activationCommand?.dispose());
     }
 
-    
+
 }

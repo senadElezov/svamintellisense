@@ -1,31 +1,56 @@
 import * as vscode from 'vscode';
+import { DBType } from '../Types/db-type';
 import { DBControlsColumnsIntellisense } from './DBControlsColumnsIntellisense';
 
 
 export class DBControlsColumnsIntellisenseController {
-    private _activationCommand: vscode.Disposable;
-    private _deactivationCommand:vscode.Disposable;
-    private _controlsColumnsIntellisense: DBControlsColumnsIntellisense;
+
+    private _dbControlsColumnsIntellisense: { [dbType in DBType]: {
+        intellisense: DBControlsColumnsIntellisense
+        activationCommandString: string,
+        activationCommand?: vscode.Disposable,
+        deactivationCommandString: string,
+        deactivationCommand?: vscode.Disposable
+    } } = {
+            oo: {
+                intellisense: new DBControlsColumnsIntellisense('oo'),
+                activationCommandString: "svamintellisense.activateDBControlColumnsIntellisense",
+                deactivationCommandString: "svamintellisense.deactivateDBControlColumnsIntellisense",
+            },
+            op: {
+                intellisense: new DBControlsColumnsIntellisense('op'),
+                activationCommandString: "svamintellisense.activateDBControlColumnsIntellisense.op",
+                deactivationCommandString: "svamintellisense.deactivateDBControlColumnsIntellisense.op",
+            }
+        }
 
     constructor() {
-        this._controlsColumnsIntellisense= new DBControlsColumnsIntellisense();
-        this._activationCommand = vscode.commands.registerCommand("svamintellisense.activateDBControlColumnsIntellisense", () => {
 
-            this._controlsColumnsIntellisense.activate();
-        });
+        Object.values(this._dbControlsColumnsIntellisense)
+            .forEach((def) => {
+                def.activationCommand = vscode.commands.registerCommand(def.activationCommandString, () => {
+                    def.intellisense.activate();
+                });
 
-        this._deactivationCommand= vscode.commands.registerCommand("svamintellisense.deactivateDBControlColumnsIntellisense", () => {
+                def.deactivationCommand = vscode.commands.registerCommand(def.deactivationCommandString, () => {
 
-            this._controlsColumnsIntellisense.dispose()
-            
-        })
-        
+                    def.intellisense.dispose()
+
+                })
+
+            })
 
     }
 
     public dispose() {
-        this._controlsColumnsIntellisense.dispose();
-        this._activationCommand.dispose()
-        this._deactivationCommand.dispose();
+
+        Object.values(this._dbControlsColumnsIntellisense)
+            .forEach(({ intellisense, activationCommand, deactivationCommand }) => {
+                intellisense.dispose();
+                activationCommand?.dispose()
+                deactivationCommand?.dispose();
+            })
+
+
     }
 }

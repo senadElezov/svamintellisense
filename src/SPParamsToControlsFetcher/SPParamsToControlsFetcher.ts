@@ -4,6 +4,7 @@ import executeQuery from "../Utils/executeQuery";
 import { dataTypeToEditorType } from "../Utils/dataTypeToEditorType";
 import { convertDBToDataType } from "../Utils/convertDBToDataType";
 import generateControlsString from "../Utils/generateControlsString";
+import { DBType } from '../Types/db-type';
 
 export class SPParamsToControlsFetcher {
 
@@ -13,7 +14,9 @@ export class SPParamsToControlsFetcher {
 
     private _spParamsControlsCompletionProvider: vscode.Disposable;
 
-    constructor() {
+    constructor(
+        private _dbType: DBType
+    ) {
         this._spDefs = {}
         this._spParamsControlsCompletionProvider = { dispose: () => { } }
     }
@@ -30,7 +33,7 @@ export class SPParamsToControlsFetcher {
                                         left join fnWeb
                                 WHERE   par.is_output = 0
                                 `
-        const paramsQueryResult: { procname: string, paramname: string, typename: string }[] = await executeQuery(spParamsQuery);
+        const paramsQueryResult: { procname: string, paramname: string, typename: string }[] = await executeQuery(spParamsQuery, this._dbType);
 
         paramsQueryResult.forEach((def) => {
             const { paramname, procname, typename } = def
@@ -57,7 +60,7 @@ export class SPParamsToControlsFetcher {
         let sel: vscode.DocumentSelector = [
             { scheme: 'file', language: 'javascript' },
             { scheme: 'file', language: 'typescript' },
-            { scheme: 'file', language: 'typescriptreact'},
+            { scheme: 'file', language: 'typescriptreact' },
 
         ];
 
@@ -73,12 +76,12 @@ export class SPParamsToControlsFetcher {
                     let completionItemList: vscode.CompletionItem[] = [];
 
                     for (let spName in spDefs) {
-                        let completionItemControls = new vscode.CompletionItem(spName+ 'Controls')
+                        let completionItemControls = new vscode.CompletionItem(spName + 'Controls')
 
                         const controls = spDefs[spName];
 
                         completionItemControls.kind = vscode.CompletionItemKind.Constructor;
-                        completionItemControls.insertText = generateControlsString(spName,controls);
+                        completionItemControls.insertText = generateControlsString(spName, controls);
                         completionItemControls.sortText = String.fromCharCode(0);
                         completionItemControls.documentation = 'Kontrole za storanu proceduru ' + spName;
 

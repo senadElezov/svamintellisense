@@ -1,3 +1,4 @@
+import { DBType } from '../Types/db-type';
 import executeQuery from "../Utils/executeQuery";
 import myStringify from "../Utils/myStringify";
 import WorkspaceManager from "../WorkspaceManager";
@@ -21,19 +22,23 @@ export class RoutesModelFetcher {
     private _routesModel: IRouteModel[]
 
     private _workspaceManager: WorkspaceManager
+    private _dbType: DBType = 'oo'
+    constructor(
 
-    constructor() {
+    ) {
         this._routesModel = [];
         this._workspaceManager = new WorkspaceManager();
     }
 
     async fetchRoutes() {
 
-        const result: { url: string }[] = await executeQuery(`
-        SELECT  Url 
-        FROM    core.WebMenu
-        WHERE   Url IS NOT NULL AND Url<>'prefix'
-        `);
+        const query = `
+                            SELECT  Url 
+                            FROM    core.WebMenu
+                            WHERE   Url IS NOT NULL AND Url<>'prefix'
+                        `
+
+        const result: { url: string }[] = await executeQuery(query, 'oo');
 
         result.forEach(({ url }) => {
 
@@ -119,16 +124,11 @@ export class RoutesModelFetcher {
     }
 
     async saveRoutesModel() {
-        const rootFolder = this._workspaceManager.getRootFolder();
-        const SIFRARNICI_FOLDER_PATH = '/app/repository/Routes/'
 
-        const rootPath = rootFolder.path;
-        // const IMPORT_HEADER = 'import { WeakType } from "./Types/WeakType";';
-        const fullPath = rootPath + SIFRARNICI_FOLDER_PATH;
+        const repositoryPath = await this._workspaceManager.getRepositoryPath('oo')
+        const routesPath = repositoryPath + 'Routes/';
 
         const sifrarnikTableImport = 'import { SifrarnikTable } from "modules/Sifrarnici/Types/SifrarnikTable";'
-
-        const alreadyPassedUrls: string[] = [];
 
         const routesModelBody = this._routesModel
             .sort((first, second) => (second.params?.length || 0) - (first.params?.length || 0))
@@ -168,19 +168,19 @@ export class RoutesModelFetcher {
 
         const paramsOrder = this._routesModel
             .filter(routeModel => routeModel?.params?.length)
-            .reduce((total,routeModel) => {
+            .reduce((total, routeModel) => {
                 return {
                     ...total,
                     [routeModel.baseUrl]: routeModel.params?.sort((first, second) => first.priority - second.priority).map(param => param.name)
                 }
             },
-                {}            
+                {}
             )
 
 
-        const routesImport ='import { RoutesModel } from "./RoutesModel";\n\n';
+        const routesImport = 'import { RoutesModel } from "./RoutesModel";\n\n';
 
-        await this._workspaceManager.addFile(fullPath + 'RoutesModel.ts', sifrarnikTableImport + '\n\n' + routesModelString);
-        await this._workspaceManager.addFile(fullPath +routesImport +  'routesParamsOrder.ts', 'export const routesParamsOrder: { [route in keyof RoutesModel]?: string[] }  = ' + JSON.stringify(paramsOrder, null, '\t'));
+        await this._workspaceManager.addFile(routesPath + 'RoutesModel.ts', sifrarnikTableImport + '\n\n' + routesModelString);
+        await this._workspaceManager.addFile(routesPath + routesImport + 'routesParamsOrder.ts', 'export const routesParamsOrder: { [route in keyof RoutesModel]?: string[] }  = ' + JSON.stringify(paramsOrder, null, '\t'));
     }
 }

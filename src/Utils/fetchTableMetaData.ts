@@ -1,12 +1,13 @@
 import { ITableMeta } from "../Interfaces/ITableMeta";
+import { DBType } from '../Types/db-type';
 import executeQuery from "./executeQuery";
 
-const fetchTableMetaData = async (table?:string) => {
+const fetchTableMetaData = async (dbType: DBType, table?: string) => {
 
-    const tableConditionalFilter = table ? ' AND t.name = ' + table : '';
+        const tableConditionalFilter = table ? ' AND t.name = ' + table : '';
 
-    const tablesQuery = 
-    `   select  cols.name as columnName,
+        const tablesQuery =
+                `   select  cols.name as columnName,
                 cols.is_nullable,
                 cols.column_id as columnID, 
                 tt.name as dataType,
@@ -42,11 +43,11 @@ const fetchTableMetaData = async (table?:string) => {
                 AND t.name NOT LIKE '%vTmp%'
                 AND t.name NOT LIKE '[_]%'
                 ${tableConditionalFilter}`
-        
-    
-        
-        const viewsQuery = 
-        `
+
+
+
+        const viewsQuery =
+                `
         select  cols.name as columnName,
                 cols.is_nullable,
                 cols.column_id as columnID, 
@@ -72,9 +73,9 @@ const fetchTableMetaData = async (table?:string) => {
                 AND t.name NOT LIKE '%vTmp%'
                 AND t.name NOT LIKE '[_]%'
         `
-        
-        const tableFunctionsQuery = 
-        `
+
+        const tableFunctionsQuery =
+                `
         select  cols.name as columnName,
                 cols.is_nullable,
                 cols.column_id as columnID, 
@@ -113,12 +114,11 @@ const fetchTableMetaData = async (table?:string) => {
         ) q
         ORDER BY q.columnID
         `
-    
-    const tableMetadata:ITableMeta[] = await executeQuery(metaDataQueryString);
 
+        const tableMetadata: ITableMeta[] = await executeQuery(metaDataQueryString, dbType);
 
-    return tableMetadata; 
-} 
+        return tableMetadata;
+}
 
 export default fetchTableMetaData;
 

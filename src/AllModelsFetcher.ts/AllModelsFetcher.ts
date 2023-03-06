@@ -1,14 +1,13 @@
 import { DBModelFetcher } from '../DBModelFetcher/DbModelFetcher';
 import { queries } from '../queries';
 import { SvamSPIntellisense } from '../SvamSPIntellisense/SvamSPIntellisense';
+import { DBType } from '../Types/db-type';
 import executeQueries from '../Utils/executeQueries';
 import { ViewFetcher } from '../ViewFetcher/ViewFetcher';
 
 
 
 export class AllModelsFetcher {
-
-
 
     private _allDefs: {
         views: any[],
@@ -19,11 +18,15 @@ export class AllModelsFetcher {
         tablefunctionscolumns: any[]
     } | null = null;
 
-    constructor() { }
+    constructor(
+        private _dbType: DBType
+    ) { }
 
 
     async loadToFiles() {
+
         const spIntellisense = new SvamSPIntellisense(
+            this._dbType,
             this._allDefs?.storedprocedures,
             this._allDefs?.scalars,
             this._allDefs?.tablefunctionsparams,
@@ -36,11 +39,11 @@ export class AllModelsFetcher {
         await spIntellisense.saveStoredProceduresModelToFile()
 
 
-        const dbModelFetcher = new DBModelFetcher(this._allDefs?.tables);
+        const dbModelFetcher = new DBModelFetcher(this._dbType, this._allDefs?.tables);
         await dbModelFetcher.metadataToDict();
-        await dbModelFetcher.generateModelType();
+        await dbModelFetcher.loadDbModelToFiles();
 
-        const viewsFetcher = new ViewFetcher(this._allDefs?.views);
+        const viewsFetcher = new ViewFetcher(this._dbType, this._allDefs?.views);
         await viewsFetcher.metadataToDict();
         await viewsFetcher.saveViewModelToFiles();
     }
@@ -65,8 +68,8 @@ export class AllModelsFetcher {
             tablefunctionsparams: FETCH_TABLE_FUNCTIONS_PARAMS_QUERY,
             tablefunctionscolumns: FETCH_TABLE_FUNCTIONS_COLUMNS_QUERY
         }
-        
-        const result = await executeQueries(queryDefinitions);
+
+        const result = await executeQueries(queryDefinitions, this._dbType);
 
         this._allDefs = result;
     }

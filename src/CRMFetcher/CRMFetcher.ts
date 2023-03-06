@@ -191,7 +191,7 @@ export class CRMFetcher {
         this._tableDefs = {};
         this._crmRelations = [];
         this._workspaceManager = new WorkspaceManager();
-        this._ctrlCols = new DBControlsColumnsIntellisense();
+        this._ctrlCols = new DBControlsColumnsIntellisense('oo');
         this._primaryKeys = {}
         this._crmTableDefs = {}
     }
@@ -209,7 +209,7 @@ export class CRMFetcher {
                 AND
                 referencedTableName COLLATE CROATIAN_CS_AS LIKE 'C%' AND UPPER(SUBSTRING(referencedTableName,2,1)) = SUBSTRING(referencedTableName,2,1)	`
 
-        this._crmRelations = await executeQuery(CRMRelationsQuery);
+        this._crmRelations = await executeQuery(CRMRelationsQuery, 'oo');
 
         const referenceDict = this._crmRelations.reduce((total: any, current) => {
 
@@ -239,7 +239,7 @@ export class CRMFetcher {
             {}
         )
 
-        await this._ctrlCols.fetchTableDefs({dateDefault:'datetime'});
+        await this._ctrlCols.fetchTableDefs({ dateDefault: 'datetime' });
 
         this._tableDefs = this._ctrlCols._tableDefs;
 
@@ -306,7 +306,7 @@ export class CRMFetcher {
                 AND tableName NOT IN ('CWeb_Persistance','CALLOFF') 
         `
 
-        const primaryKeys: PrimaryKeysModel[] = await executeQuery(pkQuery)
+        const primaryKeys: PrimaryKeysModel[] = await executeQuery(pkQuery, 'oo')
 
         this._primaryKeys = primaryKeys.reduce((total: any, current) => {
 

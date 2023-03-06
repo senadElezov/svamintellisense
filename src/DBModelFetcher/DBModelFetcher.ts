@@ -1,6 +1,8 @@
 import { SifrarniksFetcher } from "../SifrarniksFetcher/SifrarniksFetcher";
+import { DBType } from '../Types/db-type';
 
 import { convertDBtoTypeScriptType } from "../Utils/convertDBtoTypeScriptType";
+import executeQuery from '../Utils/executeQuery';
 import myStringify from "../Utils/myStringify";
 import WorkspaceManager, { SISettings } from "../WorkspaceManager";
 const fetch = require("node-fetch");
@@ -58,7 +60,11 @@ export class DBModelFetcher {
 
     private _typescriptDBModel: { [tableName: string]: ({ columnName?: string, dataType?: string, isNullable?: boolean })[] }
     private _tableInfos: { [tableName: string]: TableInfo }
-    constructor(private _metadata?: any[]) {
+    constructor(
+        private _dbType: DBType,
+        private _metadata?: any[]
+
+    ) {
         this._workspaceManager = new WorkspaceManager();
         this._tableInfos = {};
         this._typescriptDBModel = {}
@@ -71,35 +77,21 @@ export class DBModelFetcher {
 
     public async fetchDatabaseModel() {
         await this.getSettings();
-        let settings = this._settings;
-        const queryPrepared = [
-            {
-                query: `SELECT  LOWER(COLUMN_NAME) as column_name,
-                                DATA_TYPE,
-                                IS_NULLABLE,
-                                tableDefs.TABLE_NAME
-                        FROM	INFORMATION_SCHEMA.COLUMNS as colDefs
-                                INNER JOIN INFORMATION_SCHEMA.TABLES as tableDefs ON colDefs.TABLE_NAME = tableDefs.TABLE_NAME
-                        WHERE	tableDefs.TABLE_TYPE <> 'VIEW'
-                                AND LEFT(tableDefs.TABLE_NAME,3)<>'tmp'
-                                AND LEFT(tableDefs.TABLE_NAME,1)<>'_'
-                                AND LEFT(tableDefs.TABLE_NAME,4) <> 'tUSR'
-                        `,
-                commandtype: 'text'
-            }
-        ];
 
-        let requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic dGVzdDoxMjM=' },
-            body: JSON.stringify({
-                db: settings?.database,
-                queries: queryPrepared,
-            })
-        };
+        const query = `
+            SELECT  LOWER(COLUMN_NAME) as column_name,
+                    DATA_TYPE,
+                    IS_NULLABLE,
+                    tableDefs.TABLE_NAME
+            FROM	INFORMATION_SCHEMA.COLUMNS as colDefs
+                    INNER JOIN INFORMATION_SCHEMA.TABLES as tableDefs ON colDefs.TABLE_NAME = tableDefs.TABLE_NAME
+            WHERE	tableDefs.TABLE_TYPE <> 'VIEW'
+                    AND LEFT(tableDefs.TABLE_NAME,3)<>'tmp'
+                    AND LEFT(tableDefs.TABLE_NAME,1)<>'_'
+                    AND LEFT(tableDefs.TABLE_NAME,4) <> 'tUSR'
+            `;
 
-        const response = await fetch(settings?.api, requestOptions);
-        const dbModel = await response.json();
+        const dbModel = await executeQuery(query, this._dbType)
 
         this._metadata = dbModel;
 
@@ -108,46 +100,18 @@ export class DBModelFetcher {
 
     public async metadataToDict() {
 
-        const convertDBDataType: { [key: string]: string } = {
-            bigint: 'number',
-            binary: 'string',
-            bit: 'boolean',
-            char: 'string',
-            date: 'Date',
-            datetime: 'Date',
-            datetime2: 'Date',
-            decimal: 'number',
-            float: 'number',
-            hierarchyid: 'number',
-            image: 'any',
-            int: 'number',
-            money: 'number',
-            nchar: 'string',
-            ntext: 'string',
-            numeric: 'number',
-            nvarchar: 'string',
-            real: 'number',
-            smalldatetime: 'Date',
-            smallint: 'number',
-            smallmoney: 'number',
-            text: 'string',
-            time: 'datetime',
-            timestamp: 'datetime',
-            tinyint: 'number',
-            uniqueidentifier: 'number',
-            varbinary: 'string',
-            varchar: 'string',
-            xml: 'any',
-        }
+
 
         this._metadata?.map((dbModelRow: any) => {
+
             const {
                 table_name,
                 column_name,
                 is_nullable,
                 data_type
             } = dbModelRow;
-            const typeScriptDataType = convertDBDataType[data_type];
+
+            const typeScriptDataType = convertDBtoTypeScriptType[data_type];
 
             if (!this._typescriptDBModel[table_name]) {
                 this._typescriptDBModel[table_name] = [];
@@ -162,38 +126,47 @@ export class DBModelFetcher {
         })
     }
 
-    private loadDbModelToFiles() {
-        const rootFolder = this._workspaceManager.getRootFolder();
-        const MODEL_REPOSITORY_PATH = this._settings?.modelPath || '/app/repository/'
-        const MODEL_SUFFIX = 'Model'
-        const TYPESCRIPT_SUFFIX = '.ts'
-        const rootPath = rootFolder.path;
-        const IMPORT_HEADER = 'import { WeakType } from "./Types/WeakType";';
+    async loadDbModelToFiles() {
 
-        for (let tableName in this._typescriptDBModel) {
-            const columns = this._typescriptDBModel[tableName];
-            const fileName = tableName + MODEL_SUFFIX + TYPESCRIPT_SUFFIX;
-            const fullPath = rootPath + MODEL_REPOSITORY_PATH + fileName;
+        const repositoryFolderPath = await this._workspaceManager.getRepositoryPath(this._dbType);
 
-            const columnDefinitions: string = columns.map(columnDefinition => {
+        const fullPath = repositoryFolderPath + 'DBModel/';
 
-                const {
-                    columnName,
-                    dataType,
-                    isNullable
-                } = columnDefinition;
+        const typeExport = 'export type ' + (this._dbType === 'op' ? 'op' : '') + 'DBModel = {';
+        let dbModelString = typeExport;
 
-                return '\t' + columnName + '?: ' + dataType;
-            }).join(',\n');
+        const tabOut = (times: number) => {
+            let returningTabs = '';
 
-            let fileText = IMPORT_HEADER + '\n\nexport type ' + tableName + MODEL_SUFFIX + ' = WeakType<{\n' + columnDefinitions + '\n}>;'
+            for (let i = 0; i < times; i++) {
+                returningTabs += '\t';
+            }
 
-            this._workspaceManager
-            this._workspaceManager.addFile(fullPath, fileText);
+            return returningTabs;
         }
 
-    }
+        for (const [tableName, columns] of Object.entries(this._typescriptDBModel)) {
 
+            const columnsString = columns
+                .map(colDef =>
+                    tabOut(2) +
+                    colDef.columnName +
+                    (colDef.isNullable ? '?' : '') +
+                    ':' +
+                    colDef.dataType
+                ).join('\n');
+
+            const tableDefString = '\n' + tabOut(1) + tableName + '?: {' + '\n' + columnsString + '\n' + tabOut(1) + '}';
+
+            dbModelString += tableDefString;
+
+        }
+
+
+        dbModelString += '\n};'
+
+        this._workspaceManager.createFile(fullPath + '/DBModel.ts', dbModelString)
+    }
 
     public async fetchEntireDataBaseModel() {
         await this.getSettings();
@@ -257,29 +230,7 @@ export class DBModelFetcher {
         ORDER BY tableDefs.name`;
 
 
-        const queryPrepared = [
-            {
-                query: query,
-                tableName: 'infos',
-                commandtype: 'text'
-            }
-        ];
-
-        let requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic dGVzdDoxMjM=' },
-            body: JSON.stringify({
-                db: this._settings?.database,
-                queries: queryPrepared,
-            })
-        };
-
-        const response = await fetch(this._settings?.api, requestOptions);
-
-
-
-        const json = await response.json();
-        const columnDefinitions: dbModelType[] = json.infos;
+        const columnDefinitions = await executeQuery(query, this._dbType);
 
         this._metadata = columnDefinitions;
 
@@ -379,21 +330,15 @@ export class DBModelFetcher {
 
         }
 
-        // console.log(this._tableInfos);
-
         await this.generateModelType();
-
-        // await this.generateModelsAndControls();
 
     }
 
     public async generateModelType() {
-        const rootFolder = this._workspaceManager.getRootFolder();
-        const MODEL_REPOSITORY_PATH = this._settings?.modelPath || '/app/repository/DBModel';
-        const TYPESCRIPT_SUFFIX = '.ts'
-        const rootPath = rootFolder.path;
 
-        const fullModelPath = rootPath + MODEL_REPOSITORY_PATH;
+        const repositoryPath = await this._workspaceManager.getRepositoryPath(this._dbType);
+
+        const fullModelPath = repositoryPath + 'DBModel/';
 
         const tabOut = (times: number) => {
             let returningTabs = '';
@@ -405,7 +350,7 @@ export class DBModelFetcher {
             return returningTabs;
         }
 
-        const typeExport = 'export type DBModel = {';
+        const typeExport = 'export type ' + (this._dbType === 'op' ? 'op' : '') + ' DBModel = {';
         let dbModelString = typeExport;
 
 
@@ -419,98 +364,19 @@ export class DBModelFetcher {
 
         }
 
-        const entityType = 'export type DBEntity = keyof DBModel'
 
         dbModelString += '\n};'
-
-        // const primaryKeysFile = this.generatePrimaryKeysString();
-        // const primaryKeysTypeFile = this.generatePrimaryKeysTypeString();
-
         this._workspaceManager.createFile(fullModelPath + '/DBModel.ts', dbModelString)
-        // this._workspaceManager.createFile(fullModelPath + '/primaryKeysDefinition.ts', primaryKeysFile);
-        // this._workspaceManager.createFile(fullModelPath + '/DBPrimaryKeys.ts', primaryKeysTypeFile);
     }
 
     public async generateModelsAndControls() {
-        const sifrarnik = new SifrarniksFetcher();
+        const sifrarnik = new SifrarniksFetcher('standardni');
 
         await sifrarnik.fetchSifrarnikMetaData(Object.keys(this._tableInfos))
 
     }
 
-    private tabOut(tabNumber: number) {
-        const tab = '\t';
 
-        let returningTabs = '';
-
-        for (let tabIndex = 0; tabIndex < tabNumber; tabIndex++) {
-            returningTabs += tab;
-        }
-
-        return returningTabs;
-    }
-
-    private generatePrimaryKeysString() {
-        const primaryKeysDefinitionType = '{[entityName in keyof DBModel]:{columnName:keyof DBModel[entityName],isAutoGenerated:boolean}[]}';
-
-        const primaryKeysImport = 'import { DBModel } from "./DBModel"\n\n';
-        const primaryKeysExport = 'export const primaryKeysDefinition:' + primaryKeysDefinitionType + '= {\n';
-
-        const mainString = Object
-            .entries(this._tableInfos)
-            .map(([tableName, tableInfo]) => {
-
-                const {
-                    primaryKeys
-                } = tableInfo
-
-                if (!primaryKeys) {
-                    return '[]';
-                }
-
-                const primaryKeyString =
-                    primaryKeys.map((primaryKeyInfo) => {
-
-                        return this.tabOut(3) + myStringify(primaryKeyInfo)
-                    }).join(',\n')
-
-                return this.tabOut(1) + tableInfo.tableName + ':[\n' + this.tabOut(2) + primaryKeyString + this.tabOut(2) + '\n]';
-            })
-            .join(',\n');
-
-        return primaryKeysImport + primaryKeysExport + mainString + '\n}'
-    }
-
-
-    private generateForeignKeyTypeString() {
-
-        const foreignKeyTypeExport = 'export type DBForeignKeys = {\n'
-
-        let foreignKeyString = '';
-        for (const [tableName, tableInfo] of Object.entries(this._tableInfos)) {
-
-            const {
-                relations
-            } = tableInfo;
-
-            if (!relations?.length) {
-                foreignKeyString += '\n' + this.tabOut(1) + tableName + ': never';
-
-                continue;
-            }
-
-            foreignKeyString += this.tabOut(2) + tableName + ':{\n'
-
-
-            for (const [relatioName, relationDefintion] of Object.entries(relations)) {
-                const {
-                    columnPairs,
-                    relatedTable
-                } = relationDefintion
-            }
-
-        }
-    }
 }
 
 

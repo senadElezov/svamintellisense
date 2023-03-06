@@ -79,7 +79,7 @@ export class LayoutControlsExtractor {
                 const filePath = directoryUri.path + '/' + fileName;
                 const fileUri = vscode.Uri.file(filePath);
 
-                const documentText = await this._workspaceManager.readFile(fileUri);
+                const documentText = await this._workspaceManager.readFile(fileUri) || '';
 
                 this.getDocumentControlsLayouts(moduleName,documentText,filePath,fileName.replace('.js','').replace('.ts',''));
             }
@@ -150,30 +150,6 @@ export class LayoutControlsExtractor {
         }
 
         documentText = removeDocumentComments(documentText);
-
-        // const docTextLines = documentText.split('\r\n');
-        // const transformedLines = docTextLines.map(docTextLine => {
-        //     const propValuePair = docTextLine.split(':');
-
-        //     if(propValuePair.length !== 2){
-        //         return propValuePair.join(':');
-        //     }
-
-        //     let propName = propValuePair[0];
-        //     propName = propName.replace('\n','').replace('\t','').replace(/ /g,'');
-        //     console.log(propName)
-        //     if(propName.startsWith('{')){
-        //         propName = propName.replace('{','');
-        //         propName =  '{"' + propName+ '"';
-        //     }
-        //     else{
-        //         propName =  '"' + propName+ '"';
-
-        //     }
-        //     return propName + ':' + propValuePair[1];
-        // })
-
-        // documentText = transformedLines.join('\n');
 
         const variableDefinitions   = documentText.split(layoutControlDeclarationIdentifier);
 

@@ -1,7 +1,15 @@
 import { TextEncoder } from 'util';
 import * as vscode from 'vscode';
 import { StringConstants } from './StringConstants/StringConstants';
-export type SISettings = { server: string, api: string, database: string, modelPath: string }
+import { DBType } from './Types/db-type';
+export type SISettings = {
+    server: string,
+    api: string,
+    ooDatabase: string,
+    modelPath: string,
+    opDatabase: string
+}
+
 export default class WorkspaceManager {
     fileSystem: vscode.FileSystem = vscode.workspace.fs;
     _disposable: vscode.Disposable;
@@ -110,10 +118,18 @@ export default class WorkspaceManager {
     }
 
     public async readFile(fileUri: vscode.Uri) {
-        const file = await this.fileSystem.readFile(fileUri);
-        let fileContent: string = file.toString();
+        try {
+            const file = await this.fileSystem.readFile(fileUri);
+            let fileContent: string = file.toString();
 
-        return fileContent;
+            return fileContent;
+        }
+        catch {
+
+            return null;
+        }
+
+
     }
 
     public async createFolder(folderPath: string) {
@@ -125,6 +141,15 @@ export default class WorkspaceManager {
         const newFileUri = vscode.Uri.file(filePath);
         const textEncoder = new TextEncoder();
         this.fileSystem.writeFile(newFileUri, textEncoder.encode(fileContent));
+    }
+
+    public async getRepositoryPath(dbType: DBType) {
+
+        const settings = await WorkspaceManager.getSettings();
+        const rootFolder = this.getRootFolder();
+
+        const modelPath = settings?.modelPath || '/app/repository/';
+        return rootFolder.path + modelPath + dbType + '/';
     }
 }
 

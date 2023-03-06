@@ -57,7 +57,7 @@ export class CryptedQueryIntellisense {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic dGVzdDoxMjM=' },
             body: JSON.stringify({
-                db: settings?.database,
+                db: settings?.ooDatabase,
                 queries: queryPrepared,
             })
         };
@@ -99,7 +99,7 @@ export class CryptedQueryIntellisense {
 
                 const documentLine = document.lineAt(position.line);
                 const documentLineText = documentLine.text;
-                const startingCharIndex = position.character-1;
+                const startingCharIndex = position.character - 1;
 
                 let possibleTable: string = self.findCurrentTable(documentLineText, startingCharIndex);
 
@@ -130,7 +130,7 @@ export class CryptedQueryIntellisense {
                         completionItemList.push(columnCompletionItem);
                     });
 
-                    return completionItemList; 
+                    return completionItemList;
                 }
 
 
@@ -146,7 +146,7 @@ export class CryptedQueryIntellisense {
 
                 return completionItemList;
             }
-        },".");
+        }, ".");
 
     }
 
@@ -154,7 +154,7 @@ export class CryptedQueryIntellisense {
         let fillTable: boolean = false;
         const FIRST_INDEX: number = 0
 
-        let reversedTable:string = StringConstants.EMPTY;
+        let reversedTable: string = StringConstants.EMPTY;
         let returningTable: string = StringConstants.EMPTY;
 
         for (let charIndex: number = currentCharacterIndex; charIndex >= FIRST_INDEX; charIndex--) {

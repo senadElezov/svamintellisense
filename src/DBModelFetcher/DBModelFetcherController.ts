@@ -1,22 +1,38 @@
 import * as vscode from 'vscode';
+import { DBType } from '../Types/db-type';
 
 import { DBModelFetcher } from './DbModelFetcher';
 
 export class DBModelFetcherController {
-    private _dbModelFetcher: DBModelFetcher;
-    private _activationCommand: vscode.Disposable;
 
-    constructor(dbModelFetcher: DBModelFetcher) {
+    private _dbModelFetchers: { [dbTypes in DBType]: {
+        activationCommandString: string,
+        activationCommand?: vscode.Disposable,
+        fetcher: DBModelFetcher
+    } } = {
+            oo: {
+                activationCommandString: 'svamintellisense.fetchDBModel',
+                fetcher: new DBModelFetcher('oo')
+            },
+            op: {
+                activationCommandString: 'svamintellisense.fetchDBModel.op',
+                fetcher: new DBModelFetcher('op')
+            }
+        }
 
-        this._dbModelFetcher = dbModelFetcher;
-        this._activationCommand = vscode.commands.registerCommand("svamintellisense.fetchDBModel", () => {
-            dbModelFetcher.fetchEntireDataBaseModel();
-        });
+    constructor() {
+
+        Object.values(this._dbModelFetchers).forEach((def) => {
+            def.activationCommand = vscode.commands.registerCommand(def.activationCommandString, () => {
+                def.fetcher.fetchEntireDataBaseModel();
+            });
+        })
 
     }
 
     public dispose() {
-        this._activationCommand.dispose();
+
+        Object.values(this._dbModelFetchers).forEach(({ activationCommand }) => activationCommand?.dispose());
 
     }
 

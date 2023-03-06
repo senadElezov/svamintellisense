@@ -16,6 +16,7 @@ export const queries = {
                             AND LEFT(tableDefs.TABLE_NAME,3)<>'tmp'
                             AND LEFT(tableDefs.TABLE_NAME,1)<>'_'
                             AND LEFT(tableDefs.TABLE_NAME,4) <> 'tUSR'
+                            AND TABLE_NAME NOT LIKE '%dbo.tmp%'
                     `,
 
     FETCH_VIEWS_QUERY:`select   cols.name as columnName,

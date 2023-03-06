@@ -1,10 +1,11 @@
+import { DBType } from '../Types/db-type';
 import WorkspaceManager from "../WorkspaceManager";
 
 const fetch = require("node-fetch");
 
 
-const executeQuery = async (query:string) => {
-    
+const executeQuery = async (query: string, database: DBType) => {
+
 
     let settings = await WorkspaceManager.getSettings();
 
@@ -12,7 +13,7 @@ const executeQuery = async (query:string) => {
         {
             query: query,
             commandtype: 'text',
-            tableName:'infos'
+            tableName: 'infos'
         }
     ];
 
@@ -20,7 +21,7 @@ const executeQuery = async (query:string) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic dGVzdDoxMjM=' },
         body: JSON.stringify({
-            db: settings?.database,
+            db: database === 'oo' ? settings?.ooDatabase : settings?.opDatabase,
             queries: queryPrepared,
         })
     };

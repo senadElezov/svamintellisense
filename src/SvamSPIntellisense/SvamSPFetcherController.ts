@@ -1,25 +1,39 @@
 import { SvamSPIntellisense } from "./SvamSPIntellisense";
 import * as vscode from 'vscode';
+import { DBType } from '../Types/db-type';
 
 export class SvamSPFetcherController {
-    
-    private _svamIntellisense: SvamSPIntellisense;
-    private _activationCommand: vscode.Disposable;
-    
 
-    constructor( svamSPIntellisense: SvamSPIntellisense ) {
-
-        this._svamIntellisense = svamSPIntellisense;
-        this._activationCommand = vscode.commands.registerCommand("svamintellisense.fetchSPModel", ()=>
+    private _dbSpIntellisense: { [dbType in DBType]: {
+        intellisense: SvamSPIntellisense,
+        activationCommandString: string,
+        activationCommand?: vscode.Disposable,
+    } } =
         {
-            svamSPIntellisense.generateStoredProceduresModel();
-        });
+            oo: {
+                intellisense: new SvamSPIntellisense('oo'),
+                activationCommandString: 'svamintellisense.fetchSPModel'
+            },
+            op: {
+                intellisense: new SvamSPIntellisense('oo'),
+                activationCommandString: 'svamintellisense.fetchSPModel.op'
+            }
+        }
         
+    constructor() {
+
+        Object.values(this._dbSpIntellisense).forEach((def) => {
+
+            def.activationCommand = vscode.commands.registerCommand(def.activationCommandString, () => {
+                def.intellisense.generateStoredProceduresModel();
+            });
+
+        })
+
     }
-    
-    public dispose() 
-    {
-        this._activationCommand.dispose();
-    
+
+    public dispose() {
+        Object.values(this._dbSpIntellisense).forEach(({ activationCommand }) => activationCommand?.dispose());
+
     }
 }

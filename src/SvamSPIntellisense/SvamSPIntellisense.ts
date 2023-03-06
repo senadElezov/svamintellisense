@@ -5,6 +5,7 @@ import myStringify from '../Utils/myStringify';
 import executeQuery from '../Utils/executeQuery';
 import { convertDBtoTypeScriptType } from '../Utils/convertDBtoTypeScriptType';
 import functionMetaToInterface from '../Utils/functionMetaToInterface';
+import { DBType } from '../Types/db-type';
 
 
 const fetch = require("node-fetch");
@@ -89,17 +90,24 @@ export class SvamSPIntellisense {
     public _catalogs: catalog[];
     private _workspaceManager: WorkspaceManager;
 
+    private _dbType: DBType = 'oo'
+
     constructor(
+        dbType?: DBType,
+
         private _spMetaData?: any[],
         private _scalarMetadata?: any[],
         private _fnParamsMetadata?: any[],
-        private _fnColumnsMetadata?: any[]
+        private _fnColumnsMetadata?: any[],
     ) {
+
         this._procedureParamsDictionary = {};
         this._functionDictionary = {};
         this._scalarFunctionDictionary = {};
         this._catalogs = [];
         this._workspaceManager = new WorkspaceManager();
+
+        this._dbType = dbType || this._dbType;
     }
 
     async getAllStoredProceduresAndParams(withIntellisense: boolean = true) {
@@ -109,9 +117,8 @@ export class SvamSPIntellisense {
 
         this._myCompletionItemProvider.dispose();
         let settings = this._settings;
-        const queryPrepared = [
-            {
-                query: `SELECT  pr.name as procname,
+        const query = `
+                        SELECT  pr.name as procname,
                                 par.name as paramname,
                                 t.name as typename,
                                 par.is_output as isoutput,
@@ -121,23 +128,11 @@ export class SvamSPIntellisense {
                                 inner join sys.schemas as schem on schem.schema_id = pr.schema_id
                                 inner join sys.sql_modules as mod on pr.object_id = mod.object_id
                                 left join sys.parameters as par on par.object_id=pr.object_id 
-                                left join sys.types as t on par.user_type_id = t.user_type_id`,
-                commandtype: 'text'
-            }
-        ];
+                                left join sys.types as t on par.user_type_id = t.user_type_id
+                        `;
 
-        let requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic dGVzdDoxMjM=' },
-            body: JSON.stringify({
-                db: settings?.database,
-                queries: queryPrepared,
-            })
-        };
 
-        const response = await fetch(settings?.api, requestOptions);
-        const procedures = await response.json();
-
+        const procedures = await executeQuery(query, this._dbType)
         let self = this;
 
         procedures.map((procData: returningProcData) => {
@@ -391,52 +386,53 @@ export class SvamSPIntellisense {
         let procedureParamsDictionary = this._procedureParamsDictionary;
         let self = this;
         let catalogs = this._catalogs;
-        this._myCompletionItemProvider = vscode.languages.registerCompletionItemProvider(sel, {
-            provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
-                let completionItemList: vscode.CompletionItem[] = [];
-                for (let procedure in procedureParamsDictionary) {
-                    let completionItem = new vscode.CompletionItem(procedure);
+        this._myCompletionItemProvider = vscode.languages
+            .registerCompletionItemProvider(sel, {
+                provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
+                    let completionItemList: vscode.CompletionItem[] = [];
+                    for (let procedure in procedureParamsDictionary) {
+                        let completionItem = new vscode.CompletionItem(procedure);
 
-                    const generateInsertString = (): string => {
-                        let paramsArray: string[] = procedureParamsDictionary[procedure].params.map((param, index, array) => {
-                            let conditionalComma = ",";
-                            if (index === array.length - 1) {
-                                conditionalComma = "";
-                            }
-                            return "\t\t " + param._name + ": null" + conditionalComma + " //" + param._type;
-                        });
+                        const generateInsertString = (): string => {
+                            let paramsArray: string[] = procedureParamsDictionary[procedure].params.map((param, index, array) => {
+                                let conditionalComma = ",";
+                                if (index === array.length - 1) {
+                                    conditionalComma = "";
+                                }
+                                return "\t\t " + param._name + ": null" + conditionalComma + " //" + param._type;
+                            });
 
-                        let returningString: string = "";
-                        returningString = returningString + "{ \r\n";
-                        returningString = returningString + "\tquery:'" + procedure + "',\r\n";
-                        returningString = returningString + "\tparams: { \r\n";
-                        returningString = returningString + paramsArray.join("\r\n");
-                        returningString = returningString + "\r\n\t\t}, \r\n";
-                        returningString = returningString + "\tcommandtype: 'sp' \r\n";
-                        returningString = returningString + "} \r\n";
-                        return returningString;
-                    };
+                            let returningString: string = "";
+                            returningString = returningString + "{ \r\n";
+                            returningString = returningString + "\tquery:'" + procedure + "',\r\n";
+                            returningString = returningString + "\tparams: { \r\n";
+                            returningString = returningString + paramsArray.join("\r\n");
+                            returningString = returningString + "\r\n\t\t}, \r\n";
+                            returningString = returningString + "\tcommandtype: 'sp' \r\n";
+                            returningString = returningString + "} \r\n";
+                            return returningString;
+                        };
 
 
-                    completionItem.kind = vscode.CompletionItemKind.Constructor;
-                    completionItem.insertText = generateInsertString();
-                    completionItem.sortText = String.fromCharCode(0);
-                    completionItem.documentation = "(stored procedure) " + self._settings?.database + "/" + self._settings?.database;
-                    completionItemList.push(completionItem);
+                        completionItem.kind = vscode.CompletionItemKind.Constructor;
+                        completionItem.insertText = generateInsertString();
+                        completionItem.sortText = String.fromCharCode(0);
+                        completionItem.documentation = "(stored procedure) " + self._settings?.ooDatabase + "/" + self._settings?.ooDatabase;
+                        completionItemList.push(completionItem);
+                    }
+
+                    catalogs.map((catalog) => {
+                        let completionItem = new vscode.CompletionItem('ctlg' + catalog.name);
+                        completionItem.sortText = String.fromCharCode(0);
+                        completionItem.documentation = catalog.description;
+                        completionItem.insertText = catalog.name;
+                        completionItemList.push(completionItem);
+                    });
+
+
+                    return completionItemList;
                 }
-
-                catalogs.map((catalog) => {
-                    let completionItem = new vscode.CompletionItem('ctlg' + catalog.name);
-                    completionItem.sortText = String.fromCharCode(0);
-                    completionItem.documentation = catalog.description;
-                    completionItem.insertText = catalog.name;
-                    completionItemList.push(completionItem);
-                });
-
-
-                return completionItemList;
-            }
-        });
+            });
 
     }
 
@@ -486,6 +482,7 @@ export class SvamSPIntellisense {
     }
 
     public async generateStoredProceduresModel() {
+
         await this.getAllStoredProceduresAndParams(false);
 
         const convertDBDataType: { [key: string]: 'string' | 'number' | 'boolean' | 'Date' } = {
@@ -528,10 +525,8 @@ export class SvamSPIntellisense {
         let importDBTypes = 'import { IdbFilter, IdbSort } from "@svam/components/SvamGridTS/Interfaces/SvamCustomStore/SvamPropsTransform/svamCustomStorePropsTransform";\n';
         importDBTypes += 'import { IReferenceFilter } from "core/utils/DataSources/storedProcedure"\n';
 
-        const rootFolder = this._workspaceManager.getRootFolder().path;
-        const MODEL_REPOSITORY_PATH = '/app/repository/';
-        const storedProceduresFolder = rootFolder + MODEL_REPOSITORY_PATH + 'storedProcedures/';
-        let importString = '';
+        const repositoryFolderPath = await this._workspaceManager.getRepositoryPath(this._dbType);
+        const storedProceduresFolder = repositoryFolderPath + 'storedProcedures/';
 
         const storedProcedureColumnsType = ':{[StoredProcedure in keyof StoredProceduresModel]?:ISvamColumnOptions[]}';
 
@@ -712,7 +707,7 @@ export class SvamSPIntellisense {
             return;
         }
 
-        const storedProcedureModelType = 'export type StoredProceduresModel = {' + storedProceduresString + '\n' + '}';
+        const storedProcedureModelType = 'export type ' + (this._dbType === 'op' ? 'op' : '') + 'StoredProceduresModel = {' + storedProceduresString + '\n' + '}';
 
 
         const stringifiedColumns = myStringify(spColumnDefs)
@@ -761,8 +756,7 @@ export class SvamSPIntellisense {
             xml: 'string',
         };
 
-        const rootFolder = this._workspaceManager.getRootFolder().path;
-        const MODEL_REPOSITORY_PATH = this._settings?.modelPath || '/app/repository/';
+        const repositoryPath = await this._workspaceManager.getRepositoryPath(this._dbType);
 
         let storedProceduresString = ''
 
@@ -842,9 +836,9 @@ export class SvamSPIntellisense {
             typeString += newLine + tab + '};'
 
             storedProceduresString += '\n' + typeString + '\n';
-            const storedProcedureModelType = 'export type StoredProceduresModel = {' + storedProceduresString + '\n' + '}';
+            const storedProcedureModelType = 'export type ' + (this._dbType === 'op' ? 'op' : '') + 'StoredProceduresModel = {' + storedProceduresString + '\n' + '}';
 
-            await this._workspaceManager.createFile(rootFolder + MODEL_REPOSITORY_PATH + 'StoredProceduresModel.ts', storedProcedureModelType);
+            await this._workspaceManager.createFile(repositoryPath + 'storedProcedures/' + 'StoredProceduresModel.ts', storedProcedureModelType);
 
         }
     }
@@ -875,8 +869,8 @@ export class SvamSPIntellisense {
 
 
 
-        const functionColumnsFetch: FunctionColumnDefFetch[] = await executeQuery(functionColumnsDefintionQuery);
-        const functionParamsFetch: FunctionParamDefFetch[] = await executeQuery(functionParamDefinitionsQuery);
+        const functionColumnsFetch: FunctionColumnDefFetch[] = await executeQuery(functionColumnsDefintionQuery, this._dbType);
+        const functionParamsFetch: FunctionParamDefFetch[] = await executeQuery(functionParamDefinitionsQuery, this._dbType);
 
         const functionDict: {
             [functionName: string]: {
@@ -890,8 +884,6 @@ export class SvamSPIntellisense {
         functionColumnsFetch.forEach(columnDef => {
 
             const {
-                colname,
-                coltype,
                 funcname
             } = columnDef;
 
@@ -921,18 +913,18 @@ export class SvamSPIntellisense {
             functionDict[funcname].fetchedParams.push(paramDef)
         });
 
-        Object.entries(functionDict).forEach(([functionName, functionFetch]) => {
+        Object.entries(functionDict)
+            .forEach(([functionName, functionFetch]) => {
 
-            this._functionDictionary[functionName] = functionMetaToInterface(functionFetch);
+                this._functionDictionary[functionName] = functionMetaToInterface(functionFetch);
+            })
 
-        })
     }
 
     public async saveFunctionDefinitionsToFile(onlyModel: boolean = false) {
 
-        const rootFolder = this._workspaceManager.getRootFolder().path;
-        const MODEL_REPOSITORY_PATH = this._settings?.modelPath || '/app/repository/';
-        const tableFunctionsFolder = rootFolder + MODEL_REPOSITORY_PATH + (onlyModel === false ? 'tableFunctions/' : '');
+        const repositoryFolderPath = await this._workspaceManager.getRepositoryPath(this._dbType)
+        const tableFunctionsFolder = repositoryFolderPath + 'tableFunctions/';
 
         let importFNModel = 'import { ISvamColumnOptions } from "@svam/components/SvamGridTS/SubComponents/SvamColumn/Interfaces/ISvamColumnOptions";\n';
         importFNModel += 'import { TableFunctionsModel } from "./TableFunctionsModel";\n\n';
@@ -940,29 +932,35 @@ export class SvamSPIntellisense {
         let tableFunctionsModelString = '';
 
 
-        Object.entries(this._functionDictionary).forEach(([functionName, functionDef]) => {
+        Object.entries(this._functionDictionary)
+            .forEach(([functionName, functionDef]) => {
 
-            const {
-                paramsModel,
-                returningModel
-            } = functionDef;
+                const {
+                    paramsModel,
+                    returningModel
+                } = functionDef;
 
-            tableFunctionsModelString += '\t\n' + functionName + ':{'
+                tableFunctionsModelString += '\t\n' + functionName + ':{'
 
-            const getModelString = (model: { [dataField: string]: typeScriptDataType }) => {
-                let paramsString = '{';
+                const getModelString = (model: { [dataField: string]: typeScriptDataType }) => {
+                    let paramsString = '{';
 
-                Object.entries(model).forEach(([paramName, paramType]) => {
-                    paramsString += '\t\t\n' + paramName + '?:' + paramType;
-                })
+                    Object.entries(model).forEach(([paramName, paramType]) => {
 
-                return paramsString + '\n\t}'
-            };
+                        if (paramName.match(/:/) || paramName.match(/^[0-9]/)) {
+                            paramName = '"' + paramName + '"'
+                        }
 
-            tableFunctionsModelString += '\n\tparams:' + (Object.keys(paramsModel) ? getModelString(paramsModel) : 'never');
-            tableFunctionsModelString += '\n\treturningModel:' + getModelString(returningModel);
-            tableFunctionsModelString += '\n\t}';
-        })
+                        paramsString += '\t\t\n' + paramName + '?:' + paramType;
+                    })
+
+                    return paramsString + '\n\t}'
+                };
+
+                tableFunctionsModelString += '\n\tparams:' + (Object.keys(paramsModel) ? getModelString(paramsModel) : 'never');
+                tableFunctionsModelString += '\n\treturningModel:' + getModelString(returningModel);
+                tableFunctionsModelString += '\n\t}';
+            })
 
 
         try {
@@ -1020,7 +1018,7 @@ export class SvamSPIntellisense {
             return;
         }
 
-        const tableFunctionsModelType = 'export type TableFunctionsModel = {' + tableFunctionsModelString + '\n' + '}';
+        const tableFunctionsModelType = 'export type ' + (this._dbType === 'op' ? 'op' : '') + 'TableFunctionsModel = {' + tableFunctionsModelString + '\n' + '}';
 
         const fnColumnDefs: any = {}
 
@@ -1036,7 +1034,7 @@ export class SvamSPIntellisense {
         if (onlyModel === false) {
             await this._workspaceManager.createFile(tableFunctionsFolder + 'TableFunctionsColumns.ts', importFNModel + 'const tableFunctionsColumns ' + tableFunctionsColumnsType + ' = ' + stringifiedColumns + exportFnColumns)
         }
-        
+
         await this._workspaceManager.createFile(tableFunctionsFolder + 'TableFunctionsModel.ts', '\n\n' + tableFunctionsModelType);
     }
 
@@ -1044,9 +1042,6 @@ export class SvamSPIntellisense {
     public async generateScalarFunctionsModel() {
         const SCALAR_FUNCTION_IDENTIFIER = '\'FN\''
 
-        const arr = [1, 2];
-
-        arr.sort()
         const functionParamDefinitionsQuery = `
         SELECT	funcDefs.name as funcName,
                 params.name as paramName,
@@ -1059,7 +1054,7 @@ export class SvamSPIntellisense {
         WHERE	funcDefs.type IN (${SCALAR_FUNCTION_IDENTIFIER})`;
 
 
-        const scalarFunctionDefs: FunctionParamDefFetch[] = await executeQuery(functionParamDefinitionsQuery);
+        const scalarFunctionDefs: FunctionParamDefFetch[] = await executeQuery(functionParamDefinitionsQuery, this._dbType);
 
         scalarFunctionDefs.forEach(scalarFunctionDefRow => {
 
@@ -1081,19 +1076,20 @@ export class SvamSPIntellisense {
                 return;
             }
 
-            this._scalarFunctionDictionary[funcname].paramsModel[paramname.replace('@', '')] = convertDBtoTypeScriptType[paramtype]
+            this._scalarFunctionDictionary[funcname].paramsModel[paramname.replace('@', '')] = convertDBtoTypeScriptType[paramtype];
 
         })
     }
 
     public async saveScalarFunctionDefinitionsToFile() {
-        const rootFolder = this._workspaceManager.getRootFolder().path;
-        const MODEL_REPOSITORY_PATH = this._settings?.modelPath || '/app/repository/';
-        const scalarFunctionsFolder = rootFolder + MODEL_REPOSITORY_PATH + 'scalarFunctions/';
+
+        const repositoryPath = await this._workspaceManager.getRepositoryPath(this._dbType);
+        const scalarFunctionsFolder = repositoryPath + 'scalarFunctions/';
 
         let scalarFunctionsModelString = '';
 
         Object.entries(this._scalarFunctionDictionary).forEach(([functionName, functionDef]) => {
+
             const {
                 paramsModel,
                 returnType
@@ -1116,7 +1112,7 @@ export class SvamSPIntellisense {
             scalarFunctionsModelString += '\n\t}';
         })
 
-        const tableFunctionsModelType = 'export type ScalarFunctionsModel = {' + scalarFunctionsModelString + '\n' + '}';
+        const tableFunctionsModelType = 'export type ' + (this._dbType === 'op' ? 'op' : '') + 'ScalarFunctionsModel = {' + scalarFunctionsModelString + '\n' + '}';
         await this._workspaceManager.createFile(scalarFunctionsFolder + 'ScalarFunctionsModel.ts', '\n\n' + tableFunctionsModelType);
 
     }

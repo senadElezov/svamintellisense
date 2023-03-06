@@ -40,7 +40,11 @@
 			},
 			{
 				"command": "svamintellisense.fetchDBModel",
-				"title": "Fetch database model"
+				"title": "Dohvati model baze"
+			},
+			{
+				"command": "svamintellisense.fetchDBModel.op",
+				"title": "(OP) Dohvati model baze"
 			},
 			{
 				"command": "svamintellisense.fetchSifrarniks",
@@ -52,7 +56,11 @@
 			},
 			{
 				"command": "svamintellisense.fetchSPModel",
-				"title": "Izvuci model storanih procedura"
+				"title": "Dohvati model storanih procedura"
+			},
+			{
+				"command": "svamintellisense.fetchSPModel.op",
+				"title": "(OP) Dohvati model storanih procedura"
 			},
 			{
 				"command": "svamintellisense.activateDBControlColumnsIntellisense",
@@ -63,8 +71,20 @@
 				"title": "Deaktiviraj intellisense za dohvaćanje kolona i kontrola"
 			},
 			{
+				"command": "svamintellisense.activateDBControlColumnsIntellisense.op",
+				"title": "(OP)Aktiviraj intellisense za dohvaćanje kolona i kontrola"
+			},
+			{
+				"command": "svamintellisense.deactivateDBControlColumnsIntellisense.op",
+				"title": "(OP)Deaktiviraj intellisense za dohvaćanje kolona i kontrola"
+			},
+			{
 				"command": "svamintellisense.fetchViewModel",
 				"title": "Dohvati model sql-view-ova"
+			},
+			{
+				"command": "svamintellisense.fetchViewModel.op",
+				"title": "(OP) Dohvati model sql-view-ova"
 			},
 			{
 				"command": "svamintellisense.fetchRoutes",
@@ -75,16 +95,32 @@
 				"title": "Aktiviraj intelisense za dohvaćanje kontrola storane procedure"
 			},
 			{
+				"command": "svamintellisense.activateSPControlsIntellisense.op",
+				"title": "(OP) Aktiviraj intelisense za dohvaćanje kontrola storane procedure"
+			},
+			{
 				"command": "svamintellisense.deactivateSPControlsIntellisense",
 				"title": "Deaktiviraj intelisense za dohvaćanje kontrola storane procedure"
+			},
+			{
+				"command": "svamintellisense.deactivateSPControlsIntellisense.op",
+				"title": "(OP) Deaktiviraj intelisense za dohvaćanje kontrola storane procedure"
 			},
 			{
 				"command": "svamintellisense.fetchAllModels",
 				"title": "Osvježi cijeli model baze(svam-api)"
 			},
 			{
+				"command": "svamintellisense.fetchAllModels.op",
+				"title": "(OP) Osvježi cijeli model baze(svam-api)"
+			},
+			{
 				"command": "svamintellisense.getCRM",
 				"title": "Dohvati CRM"
+			},
+			{
+				"command": "svamintellisense.spreadBx",
+				"title": "Raspodijeli Bx-eve"
 			}
 		]
 	},
