@@ -26,7 +26,7 @@ export class RemoteClassesRepo {
 
     }
 
-    _loadAClassToRepo(classesRepo: { [className: string]: IRemoteFieldObjectDto }, classDefinition: IRemoteFieldObjectDto) {
+    private _loadAClassToRepo(classesRepo: { [className: string]: IRemoteFieldObjectDto }, classDefinition: IRemoteFieldObjectDto) {
 
         classesRepo[classDefinition.className] = classDefinition;
 
@@ -39,7 +39,7 @@ export class RemoteClassesRepo {
             })
     }
 
-    _initClasses() {
+    private  _initClasses() {
 
         const classesRepo = this._remoteEndpoints.reduce<{ [className: string]: IRemoteFieldObjectDto }>((classesRepo, currentEndpoint) => {
 
@@ -60,7 +60,6 @@ export class RemoteClassesRepo {
 
         this._classesRepo = classesRepo;
     }
-
 
     async loadClassesToFiles() {
 
@@ -121,7 +120,6 @@ export class RemoteClassesRepo {
             suffix: '.ts'
         })
     }
-
 
     private _byAppliedType: { [appliedType in AppliedTypes]: (name: string) => string } = {
         map: (name: string) => '{[key:string]:' + name + '}',

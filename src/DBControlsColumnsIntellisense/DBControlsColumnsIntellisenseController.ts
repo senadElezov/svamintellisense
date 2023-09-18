@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { DBType } from '../Types/db-type';
+import { Injectable } from '../util-classes/di/injectable';
 import { DBControlsColumnsIntellisense } from './DBControlsColumnsIntellisense';
 
 
+@Injectable()
 export class DBControlsColumnsIntellisenseController {
 
     private _dbControlsColumnsIntellisense: { [dbType in DBType]: {

@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as test from './util-classes/di/injector'
 import { SvamSPIntellisense } from './SvamSPIntellisense/SvamSPIntellisense';
 import { SvampSPIntellisenseController } from './SvamSPIntellisense/SvamSPIntellisenseController';
 import { SvamLayoutGenerator } from './SvamLayoutGenerator/SvamLayoutGeneratorController';
@@ -35,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const routeFetcherController = new RoutesModelFetcherController();
 
 	let svamSPModelController = new SvamSPFetcherController();
-
+	test.resolver.resolve(1)
 	let tmpBxSpreaderController = new TmpBxSpreaderController()
 
 	let dbControlsColumnsController = new DBControlsColumnsIntellisenseController();

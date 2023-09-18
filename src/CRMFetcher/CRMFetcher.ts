@@ -6,6 +6,7 @@ import WorkspaceManager from '../WorkspaceManager'
 import generateColumnsString from '../Utils/generateColumnsString'
 import generateControlsString from '../Utils/generateControlsString'
 import { cloneDeep } from 'lodash'
+import { Injectable } from '../util-classes/di/injectable'
 
 type CRMTables = 'CDogPO' |
     'CQQOdg' |
@@ -168,6 +169,7 @@ type PrimaryKeysModel = {
     datatype: string
 }
 
+@Injectable()
 export class CRMFetcher {
 
     private _crmRelations: CRMRelationsModel[]

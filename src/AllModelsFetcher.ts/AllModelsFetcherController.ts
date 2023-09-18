@@ -1,7 +1,9 @@
 import { AllModelsFetcher } from './AllModelsFetcher';
 import * as vscode from 'vscode'
 import { DBType } from '../Types/db-type';
+import { Injectable } from '../util-classes/di/injectable';
 
+@Injectable()
 export class AllModelsFetcherController {
     ;
 

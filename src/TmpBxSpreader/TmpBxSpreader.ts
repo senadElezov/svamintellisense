@@ -4,7 +4,7 @@ import WorkspaceManager from '../WorkspaceManager';
 const DEPTH_INC = '{';
 const DEPTH_DEC = '}';
 
-const BX_BUTTONS_FOLDER = 'app/modules/Doc/Components/DocView/BxButtons'
+const BX_BUTTONS_FOLDER = 'app/modules/Proizvodnja/Pages/EGLPage/Components/EToolbar/Hooks/Hooks/Hooks'
 
 type ImportDef = {
 
@@ -44,14 +44,15 @@ export class TmpBxSpreader {
 
     async fillDicts() {
         const rootFolderPath = this._workspaceManager.getRootFolder()?.path;
-        const BX_PATH = BX_BUTTONS_FOLDER + '/bxButtonDefinitionsOLD.tsx';
+        const BX_PATH = BX_BUTTONS_FOLDER + '/eButtonHooks.tsx';
+
         const bxFullPath = rootFolderPath + '/' + BX_PATH;
         const bxFile = await this._workspaceManager.readFile(vscode.Uri.file(bxFullPath));
 
-        if(!bxFile) {
+        if (!bxFile) {
             return;
         }
-        
+
         const documentLines = bxFile.split('\n');
 
         let lineIdx = 0;
@@ -165,8 +166,9 @@ export class TmpBxSpreader {
         await this.fillDicts();
 
         const rootFolderPath = this._workspaceManager.getRootFolder()?.path;
-        const hooksFolder = rootFolderPath + '/' + BX_BUTTONS_FOLDER + '/BxHooks';
-        const checksFolder = rootFolderPath + '/' + BX_BUTTONS_FOLDER + '/BxChecks';
+
+        const hooksFolder = rootFolderPath + '/app/modules/Proizvodnja/Pages/EGLPage/Components/EToolbar/Buttons/Actions'
+        const checksFolder = rootFolderPath + '/app/modules/Proizvodnja/Pages/EGLPage/Components/EToolbar/Buttons/Checks'
 
         this._workspaceManager.createFolder(hooksFolder);
         this._workspaceManager.createFolder(checksFolder);
@@ -183,7 +185,6 @@ export class TmpBxSpreader {
 
         const checks = Object.keys(this._bxChecks);
 
-        const displayMessageImport = 'import getBxDisplayMessage from "../getBxDisplayMessage";\n';
 
         Object
             .entries(this._bxFunctions)
@@ -191,7 +192,7 @@ export class TmpBxSpreader {
 
                 const checksImportString = checks
                     .filter(check => bxHookDefinition.indexOf(check) >= 0)
-                    .map((check) => ' import ' + check + ' from "../BxChecks/' + check + '";')
+                    .map((check) => ' import ' + check + ' from "../Checks/' + check + '";')
                     .join('\n')
 
                 const variablesImportString = this.getVariablesImportString(bxHookDefinition)
@@ -208,7 +209,7 @@ export class TmpBxSpreader {
                     .replace(new RegExp(setter, 'g'), 'setChecks')
                     .replace(new RegExp(def, 'g'), 'checks');
 
-                this._workspaceManager.createFile(hooksFolder + '/' + bxHookName + '.tsx', displayMessageImport + checksImportString + '\n' + variablesImportString + '\n' + bxHookDefinition);
+                this._workspaceManager.createFile(hooksFolder + '/' + bxHookName + '.tsx', checksImportString + '\n' + variablesImportString + '\n' + bxHookDefinition);
 
             });
 

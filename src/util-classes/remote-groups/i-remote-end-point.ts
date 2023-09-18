@@ -3,7 +3,7 @@ import { IRemoteFieldObjectDto } from './i-remote-object.dto'
 
 
 export type HttpMethod = 'POST' | 'PUT' | 'DELETE' | 'GET'
-export type GroupMethod = 'create' | 'update' | 'remove' | 'byKey' | 'extendedGet' | 'editorSource' | 'createBatch' | 'updateBatch' | 'removeBatch'
+export type GroupMethod = 'insert' | 'update' | 'remove' | 'byKey' | 'extendedGet' | 'editorSource' | 'createBatch' | 'updateBatch' | 'removeBatch'
 export interface IRemoteEndPoint {
 
     httpMethod: HttpMethod

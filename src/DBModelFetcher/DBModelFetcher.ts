@@ -1,5 +1,6 @@
 import { SifrarniksFetcher } from "../SifrarniksFetcher/SifrarniksFetcher";
 import { DBType } from '../Types/db-type';
+import { Injectable } from '../util-classes/di/injectable';
 
 import { convertDBtoTypeScriptType } from "../Utils/convertDBtoTypeScriptType";
 import executeQuery from '../Utils/executeQuery';
@@ -52,6 +53,7 @@ type TableInfo = {
     },
 };
 
+@Injectable()
 export class DBModelFetcher {
     private _settings: SISettings | null;
     private _workspaceManager: WorkspaceManager;

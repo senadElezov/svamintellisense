@@ -1,7 +1,9 @@
 
 import * as vscode from 'vscode';
+import { Injectable } from '../util-classes/di/injectable';
 import { CryptedQueryIntellisense } from './CryptedQueryIntellisense';
 
+@Injectable()
 export class CryptedQueryIntellisenseController {
     private _activationCommand: vscode.Disposable;
     private _cryptedQueryIntellisense: CryptedQueryIntellisense;

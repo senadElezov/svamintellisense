@@ -3,6 +3,7 @@ const fetch = require("node-fetch");
 
 import * as vscode from 'vscode';
 import { StringConstants } from "../StringConstants/StringConstants";
+import { Injectable } from '../util-classes/di/injectable';
 
 interface IColumnMetaData {
     columnname: string;
@@ -14,6 +15,7 @@ interface IColumnMetaData {
     referencedtable?: string;
 }
 
+@Injectable()
 export class CryptedQueryIntellisense {
     private _tableArray: string[]
     public _myCompletionItemProvider: vscode.Disposable = vscode.Disposable.from({ dispose: () => { } });

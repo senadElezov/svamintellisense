@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
+import { Injectable } from '../util-classes/di/injectable';
 import { CRMFetcher } from './CRMFetcher';
 
 
-
+@Injectable()
 export class CRMFetcherController {
     private _activationCommand: vscode.Disposable;
     private _CRMFetcher: CRMFetcher;

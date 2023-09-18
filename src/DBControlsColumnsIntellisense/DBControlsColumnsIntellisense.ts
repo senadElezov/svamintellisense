@@ -8,7 +8,9 @@ import generateColumnsString from "../Utils/generateColumnsString";
 import generateControlsString from "../Utils/generateControlsString";
 import { ITableMeta } from "../Interfaces/ITableMeta";
 import { DBType } from '../Types/db-type';
+import { Injectable } from '../util-classes/di/injectable';
 
+@Injectable()
 export class DBControlsColumnsIntellisense {
 
     public _tableDefs: {

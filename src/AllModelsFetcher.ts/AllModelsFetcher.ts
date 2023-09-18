@@ -2,11 +2,12 @@ import { DBModelFetcher } from '../DBModelFetcher/DbModelFetcher';
 import { queries } from '../queries';
 import { SvamSPIntellisense } from '../SvamSPIntellisense/SvamSPIntellisense';
 import { DBType } from '../Types/db-type';
+import { Injectable } from '../util-classes/di/injectable';
 import executeQueries from '../Utils/executeQueries';
 import { ViewFetcher } from '../ViewFetcher/ViewFetcher';
 
 
-
+@Injectable()
 export class AllModelsFetcher {
 
     private _allDefs: {
@@ -21,6 +22,7 @@ export class AllModelsFetcher {
     constructor(
         private _dbType: DBType
     ) { }
+
 
 
     async loadToFiles() {

@@ -1,5 +1,4 @@
-import { groupEnd } from 'console';
-import { OverviewRulerLane } from 'vscode';
+
 import { Config } from '../app-state/config';
 import { FSManager } from '../fs-manager';
 import { GroupMethod, IRemoteEndPoint } from './i-remote-end-point';
@@ -15,12 +14,12 @@ export interface IGroupEndpoint {
 
     params?: IRemoteFieldPrimitiveDto[],
 
-    response?: IRemoteFieldPrimitiveDto | IRemoteFieldObjectDto
+    response?: IRemoteFieldObjectDto | IRemoteFieldPrimitiveDto
 
 }
 
 
-type GroupMethodEndpoints = { [groupFunction in GroupMethod]?: IGroupEndpoint }
+type GroupMethodEndpoints = { [KGroupMethod in GroupMethod]?: IGroupEndpoint }
 
 
 export interface IGroupDefinition {
@@ -28,6 +27,8 @@ export interface IGroupDefinition {
     keyField?: string | string[]
     referencedBy: Set<string>
     references: Set<string>
+
+    groupBase?: (IRemoteFieldObjectDto | IRemoteFieldPrimitiveDto)[]
 
     implementedMethods: GroupMethodEndpoints
 }
@@ -139,12 +140,20 @@ export class RemoteEndpointsRepo {
 
 
     private readonly _baseTypes: { [method in GroupMethod]: string } = {
-        byKey:'ByKeyBase<@KeyType>'
+        byKey: 'ByKeyBase<@KeyType>',
+        insert: 'InsertBase<@Body,@Return>',
+        createBatch: 'InsertBatchBase<@Body,@Return>',
+        editorSource: 'EditorSourceBase<@Return,@KeyType>',
+        extendedGet: 'ExtendedGetBase<@Return,@AdditionalParams>',
+        remove: 'RemoveBase<@KeyType>',
+        removeBatch: 'RemoveBatchBase<@KeyType>',
+        update: 'UpdateBase<@KeyType,@Body>',
+        updateBatch: 'UpdateBatchBase<@KeyType,@Body>'
     }
 
     private readonly _baseMethodTemplates: { [method in GroupMethod]: string } = {
         byKey: 'export type ByKeyBase<KeyType> = (key:KeyType)=> TReturn',
-        create: 'export type InsertBase<TBody,TReturn> = (insertJSON:TBody) => TReturn',
+        insert: 'export type InsertBase<TBody,TReturn> = (insertJSON:TBody) => TReturn',
         editorSource: `export type EditorSourceBase<TReturn,KeyType> = (params: {
     byKey?:boolean,
     value?:KeyType,
@@ -155,8 +164,7 @@ export class RemoteEndpointsRepo {
     skip?:number,
     take?:number
 })=> TReturn`,
-        extendedGet:
-            `export type extendedGetBase<TReturn,AdditionalParams> = (params: { 
+        extendedGet: `export type ExtendedGetBase<TReturn,AdditionalParams> = (params: { 
     filter?:@FilterType[], 
     sort?:@SortType[], 
     fields?:string[],
@@ -171,13 +179,61 @@ export class RemoteEndpointsRepo {
 
     }
 
+    // private readonly _getTypes: { [method in GroupMethod]: (groupEndpoint) => any } = {
+
+    // }
+
+
+
+    private _byType: { [method in GroupMethod]: (groupEndpoint: IGroupEndpoint) => string } = {
+        byKey: (groupEndpoint) => {
+
+            const { params } = groupEndpoint;
+
+            if (params?.length === 1) {
+                const keyType = params[0].type;
+                return this._baseTypes.byKey.replace(/@KeyType/g, keyType);
+            }
+
+            const keyParams = params?.filter(({ key }) => key)
+
+            if (keyParams?.length === 0) {
+                return 'never'
+            }
+
+            return ''
+        },
+        createBatch: (groupEndpoint) => {
+
+            const { body, response } = groupEndpoint;
+
+            body?.fields.forEach(field => {
+
+            })
+
+            return ''
+        },
+        editorSource: (groupEndpoint) => {
+            const { response } = groupEndpoint;
+
+            return ''
+        },
+        extendedGet: (groupEndpointgro) => '',
+        insert: (groupEndpoint) => '',
+        remove: (groupEndpoint) => '',
+        removeBatch: (groupEndpoint) => '',
+        update: (groupEndpoint) => '',
+        updateBatch: (groupEndpoint) => ''
+    }
+
+
+
     public loadGroupRepoToTypeFiles() {
 
         this._createBaseMethods();
 
         Object.entries(this._groupRepo)
             .forEach(([groupName, { implementedMethods }]) => {
-
 
             })
 
@@ -198,5 +254,32 @@ export class RemoteEndpointsRepo {
             })
     }
 
+    private _initGroupBase(groupName: string, groupEndpoints: GroupMethodEndpoints) {
+
+        const allGroupModels = [
+            groupEndpoints?.byKey?.response,
+            groupEndpoints?.extendedGet?.response,
+            groupEndpoints?.insert?.body,
+            groupEndpoints?.update?.body,
+            groupEndpoints?.editorSource?.response
+        ].filter(Boolean) as IRemoteFieldObjectDto[]
+
+        const allBaseFields = allGroupModels
+            .map((remoteObjectDto, idx, arr) => remoteObjectDto.fields)
+            .reduce<(IRemoteFieldObjectDto | IRemoteFieldPrimitiveDto)[]>((total, current) => [
+                ...total,
+                ...(current || [])
+            ],
+                []
+            )
+            .filter((field, idx, arr) =>
+                arr.filter(({ dataField }) => dataField === field.dataField).length === allGroupModels.length
+            )
+
+        const fieldNamesSet = new Set(allBaseFields.map(({ dataField }) => dataField));
+
+        const baseFields = [...fieldNamesSet].map((dataField) => allBaseFields.find((field) => field.dataField === dataField));
+        this._groupRepo[groupName].groupBase = baseFields as any;
+    }
 
 }
