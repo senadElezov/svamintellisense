@@ -15,8 +15,16 @@ export default class WorkspaceManager {
     _disposable: vscode.Disposable;
     _settings: any;
 
+    static manager: WorkspaceManager;
     constructor() {
         this._disposable = new vscode.Disposable(() => { });
+
+        if (WorkspaceManager.manager) {
+            return WorkspaceManager.manager
+        }
+
+        WorkspaceManager.manager = this;
+
     }
 
 
@@ -120,6 +128,7 @@ export default class WorkspaceManager {
     public async readFile(fileUri: vscode.Uri) {
         try {
             const file = await this.fileSystem.readFile(fileUri);
+
             let fileContent: string = file.toString();
 
             return fileContent;

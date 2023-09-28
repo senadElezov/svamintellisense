@@ -7,67 +7,14 @@ import generateColumnsString from '../Utils/generateColumnsString'
 import generateControlsString from '../Utils/generateControlsString'
 import { cloneDeep } from 'lodash'
 import { Injectable } from '../util-classes/di/injectable'
+import { generateBasicLayoutString } from '../Utils/generateBasicLayoutString'
 
-type CRMTables = 'CDogPO' |
-    'CQQOdg' |
-    'CQ' |
-    'CSred' |
-    'CQAST_Kom' |
-    'CStat' |
-    'CQStdOdg' |
-    'CQStdOdgST' |
-    'CInf' |
-    'CEmail_Predl_Pril' |
-    'CR' |
-    'CInfGrupe' |
-    'CQQ' |
-    'CKor' |
-    'CPDA' |
-    'CEmail' |
-    'COGrupe' |
-    'CP' |
-    'CNab' |
-    'CUpit' |
-    'CML' |
-    'CPPrip' |
-    'CMLOP' |
-    'CO_KomRegije' |
-    'CZad' |
-    'CO_Djel_Veza' |
-    'CRjes' |
-    'CIzv' |
-    'CInfDet' |
-    'CDog' |
-    'COdnosi' |
-    'COPrip' |
-    'CP_Djel_Veza' |
-    'CDat' |
-    'CSredZauz' |
-    'CPDjelatnosti' |
-    'CReports' |
-    'CUpitRjes' |
-    'CProd' |
-    'CPri' |
-    'CShare' |
-    'CPrihv' |
-    'CBilj' |
-    'CO_Post' |
-    'CKam' |
-    'CReportFilter' |
-    'CUloge' |
-    'CInfCombo' |
-    'CTip' |
-    'COdnosiPO' |
-    'CZadDet' |
-    'CDV' |
-    'CEmail_Predl' |
-    'CPodsj' |
-    'CTipGrupa' |
-    'CO' |
-    'CQAST' |
-    'CFaze' |
-    'CQA' |
-    'CFaze_C'
+type CRMTables =
+    'CDogPO' | 'CQQOdg' | 'CQ' | 'CSred' | 'CQAST_Kom' | 'CStat' | 'CQStdOdg' | 'CQStdOdgST' | 'CInf' | 'CEmail_Predl_Pril' | 'CR' | 'CInfGrupe' | 'CQQ' |
+    'CKor' | 'CPDA' | 'CEmail' | 'COGrupe' | 'CP' | 'CNab' | 'CUpit' | 'CML' | 'CPPrip' | 'CMLOP' | 'CO_KomRegije' | 'CZad' | 'CO_Djel_Veza' | 'CRjes' | 'CIzv' |
+    'CInfDet' | 'CDog' | 'COdnosi' | 'COPrip' | 'CP_Djel_Veza' | 'CDat' | 'CSredZauz' | 'CPDjelatnosti' | 'CReports' | 'CUpitRjes' | 'CProd' | 'CPri' | 'CShare' |
+    'CPrihv' | 'CBilj' | 'CO_Post' | 'CKam' | 'CReportFilter' | 'CUloge' | 'CInfCombo' | 'CTip' | 'COdnosiPO' | 'CZadDet' | 'CDV' | 'CEmail_Predl' | 'CPodsj' |
+    'CTipGrupa' | 'CO' | 'CQAST' | 'CFaze' | 'CQA' | 'CFaze_C'
 
 export type ReferencedByDict = {
     [referenceName: string]: {
@@ -469,32 +416,32 @@ export class CRMFetcher {
 
         const referencedBy = this._crmTableDefs[crmTable]?.referencedBy;
 
-        if (!referencedBy) {
-            return '    return renderMainForm()';
+        if (!referencedBy || Object.values(referencedBy)?.length) {
+            return '    return <AsyncContainer status={layoutsStatus} error={layoutsError}> {renderMainForm()}  </AsyncContainer>';
         }
 
-        if (!Object.values(referencedBy)?.length) {
-            return '    return renderMainForm()'
-        }
 
 
         return `
-    return <SvamAccordion
-        multiple={true}
-        expandAllItems={true}
-    >
-        <Item title={entityBrowserDisplays['@table']}>
-            {
-                renderMainForm()
-            }
-        </Item>
-        <Item title='details'>
-            <@tableDetails
-                {...props}
-            />
-        </Item>
-    </SvamAccordion>`
+        return <AsyncContainer status={layoutsStatus} error={layoutsError}>
+            <SvamAccordion
+                multiple={true}
+                expandAllItems={true}
+            >
+                <Item title={entityBrowserDisplays['@table']}>
+                    {
+                        renderMainForm()
+                    }
+                </Item>
+                <Item title='details'>
+                    <@tableDetails
+                        {...props}
+                    />
+                </Item>
+            </SvamAccordion>
+        </AsyncContainer>`
     }
+
 
     public async generateFolders() {
 
@@ -537,10 +484,11 @@ import { ISvamFormImperativeHandle } from '@svam/forms/SvamForm/Interfaces/ISvam
 import SvamForm from '@svam/forms/SvamForm/SvamForm';
 import useSvamHistory from '@svam/Hooks/ReactRouterHooks/useSvamHistory/useSvamHistory';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { @tableColumns } from './layout/@tableColumns';
-import { @tableFilterControls } from './layout/@tableFilterControls';
 import { entityBrowserDisplays } from 'repository/DBModel/entityDisplays';
 import { Item } from 'devextreme-react/data-grid';
+import useRemoteLayout from 'core/Hooks/remoteLayout/useRemoteLayout';
+import AsyncContainer from '@svam/components/AsyncContainer/AsyncContainer';
+import { useAsyncState } from 'modules/Doc/Components/DocView/BxButtons/useDV';
 
 export interface I@tableListProps {
 
@@ -554,6 +502,15 @@ const @tableList = (props: I@tableListProps) => {
         entity: '@table',
         keyField: @primaryKey,
     })
+    const { getRemoteLayout } = useRemoteLayout();
+    const getLayoutsAsync = useCallback(() => Promise.all([
+        getRemoteLayout('/crm/@table/@tableFilterControls'),
+        getRemoteLayout('/crm/@table/@tableColumns'),
+    ]), [])
+    const { state: layouts, error: layoutsError, status: layoutsStatus } = useAsyncState({
+        asyncFunction: getLayoutsAsync
+    })
+    const [@tableFilterControls, @tableColumns] = layouts || [];
 
     const [filterFormData, setFilterFormData] = useState<any>(null);
 
@@ -566,8 +523,7 @@ const @tableList = (props: I@tableListProps) => {
             return;
         }
 
-        const newFilter =
-            Object.entries(filterFormData)
+        const newFilter = Object.entries(filterFormData)
                 .filter(([dataField, value]) => Boolean(value))
                 .map<IdbFilter>(([dataField, value], index, arr) => {
 
@@ -596,58 +552,60 @@ const @tableList = (props: I@tableListProps) => {
     const { push } = useSvamHistory();
     const onRowDblClick: ISvamGridProps['onRowDblClick'] = (evParams) => {
 
-        push('/@lowerCaseTable', { id: evParams.key });
+        push('/crm/@lowerCaseTable' as any, { id: evParams.key });
     }
 
-    return <SvamDrawer
-        render={() => {
-            return <>
-                <SvamButton
-                    text='filtriraj'
-                    icon='filter'
-                    onClick={filterClicked}
-                ></SvamButton>
-                <SvamForm
-                    ref={filterFormRef}
-                    stateStoring={true}
-                    defaultColCount={1}
-                    controls={@tableFilterControls}
-                ></SvamForm>
-            </>
-        }}
-    >
-        <SvamGridTS
-            dbFilters={filter}
-            svamCustomStore={@tableListCustomStore}
-            svamColumns={@tableColumns}
-            onRowDblClick={onRowDblClick}
-            filterRow={{
-                visible:true
+    return <AsyncContainer status={layoutsStatus} error={layoutsError}>
+        <SvamDrawer
+            render={() => {
+                return <>
+                    <SvamButton
+                        text='filtriraj'
+                        icon='filter'
+                        onClick={filterClicked}
+                    ></SvamButton>
+                    <SvamForm
+                        ref={filterFormRef}
+                        stateStoring={true}
+                        defaultColCount={1}
+                        controls={@tableFilterControls}
+                    ></SvamForm>
+                </>
             }}
-            renderToolbarItems={() => {
-                return [
-                    <Item
-                        locateInMenu={'never'}
-                        location='after'
-                    >
-                        <SvamButton
-                            text={'dodaj novi zapis u ' + entityBrowserDisplays['@table']}
-                            icon='add'
-                            type='default'
-                            onClick={() => {
-                                push('/@lowerCaseTable', { id: -1 })
-                            }}
-                        ></SvamButton>
-                    </Item>
-                ]
-            }}
-            remoteOperations={{
-                filtering: true,
-                paging: true,
-                sorting: true
-            }}
-        ></SvamGridTS>
-    </SvamDrawer>
+        >
+            <SvamGridTS
+                dbFilters={filter}
+                svamCustomStore={@tableListCustomStore}
+                svamColumns={@tableColumns}
+                onRowDblClick={onRowDblClick}
+                filterRow={{
+                    visible:true
+                }}
+                renderToolbarItems={() => {
+                    return [
+                        <Item
+                            locateInMenu={'never'}
+                            location='after'
+                        >
+                            <SvamButton
+                                text={'dodaj novi zapis u ' + entityBrowserDisplays['@table']}
+                                icon='add'
+                                type='default'
+                                onClick={() => {
+                                    push('/crm/@lowerCaseTable' as any, { id: -1 })
+                                }}
+                            ></SvamButton>
+                        </Item>
+                    ]
+                }}
+                remoteOperations={{
+                    filtering: true,
+                    paging: true,
+                    sorting: true
+                }}
+            ></SvamGridTS>
+        </SvamDrawer>
+    </AsyncContainer>
 }
 
 export default @tableList
@@ -658,9 +616,13 @@ import { ISvamGridProps } from '@svam/components/SvamGridTS/Interfaces/ISvamGrid
 import { ISvamCustomStore } from '@svam/components/SvamGridTS/Interfaces/SvamCustomStore/ISvamCustomStore';
 import { IdbFilter } from '@svam/components/SvamGridTS/Interfaces/SvamCustomStore/SvamPropsTransform/svamCustomStorePropsTransform';
 import SvamGridTS from '@svam/components/SvamGridTS/SvamGridTS';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import useSvamHistory from '@svam/Hooks/ReactRouterHooks/useSvamHistory/useSvamHistory';
-import { @tableColumns } from './layout/@tableColumns';
+import useRemoteLayout from 'core/Hooks/remoteLayout/useRemoteLayout';
+import AsyncContainer from '@svam/components/AsyncContainer/AsyncContainer';
+import { useAsyncState } from 'modules/Doc/Components/DocView/BxButtons/useDV';
+
+
 export interface I@tableProps {
 
     fixedColumnValues: any
@@ -678,6 +640,13 @@ const @tableGrid = (props: I@tableProps) => {
         keyField: @primaryKey,
         entityOperations: ['insert', 'update', 'delete']
     })
+
+    const { getRemoteLayout } = useRemoteLayout();
+    const getLayoutsAsync = useCallback(() => getRemoteLayout('/crm/@table/@tableColumns'), [])
+    const { state: @tableColumns, error: layoutsError, status: layoutsStatus } = useAsyncState({
+        asyncFunction: getLayoutsAsync
+    })
+
     useEffect(() => {
 
         if (!fixedColumnValues) {
@@ -714,31 +683,32 @@ const @tableGrid = (props: I@tableProps) => {
     const {push} = useSvamHistory()
     const onRowDblClick: ISvamGridProps['onRowDblClick'] = (evParams) => {
 
-        push('/@lowerCaseTable', { id: evParams.key });
+        push('/crm/@lowerCaseTable' as any, { id: evParams.key });
     }
 
-    return <SvamGridTS
-        dbFilters={filter}
-        svamCustomStore={svamCustomStore}
-        svamColumns={@tableColumns}
-        isEditable={true}
-        filterRow={{
-            visible:true
-        }}
-        onRowDblClick={onRowDblClick}
-        editing={{
-            allowAdding: true,
-            allowUpdating: true,
-            allowDeleting: true
-        }}
-        fixedColumnValues={fixedColumnValues}
-        remoteOperations={{
-            filtering: true,
-            sorting: true,
-            paging: true
-        }}
-    ></SvamGridTS>
-
+    return <AsyncContainer status={layoutsStatus} error={layoutsError}>
+        <SvamGridTS
+            dbFilters={filter}
+            svamCustomStore={svamCustomStore}
+            svamColumns={@tableColumns}
+            isEditable={true}
+            filterRow={{
+                visible:true
+            }}
+            onRowDblClick={onRowDblClick}
+            editing={{
+                allowAdding: true,
+                allowUpdating: true,
+                allowDeleting: true
+            }}
+            fixedColumnValues={fixedColumnValues}
+            remoteOperations={{
+                filtering: true,
+                sorting: true,
+                paging: true
+            }}
+        ></SvamGridTS>
+    </AsyncContainer>
 
 }
 
@@ -774,11 +744,12 @@ import SvamForm from '@svam/forms/SvamForm/SvamForm';
 import { ISvamCustomStore } from '@svam/components/SvamGridTS/Interfaces/SvamCustomStore/ISvamCustomStore'
 import useSvamHistory from '@svam/Hooks/ReactRouterHooks/useSvamHistory/useSvamHistory'
 import { Item } from 'devextreme-react/accordion'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { entityBrowserDisplays } from 'repository/DBModel/entityDisplays';
-
+import useRemoteLayout from 'core/Hooks/remoteLayout/useRemoteLayout';
+import AsyncContainer from '@svam/components/AsyncContainer/AsyncContainer';
+import { useAsyncState } from 'modules/Doc/Components/DocView/BxButtons/useDV';
 @mainDetailsImport
-import { @tableControls } from './layout/@tableControls'
 
 
 export interface I@tableProps {
@@ -801,6 +772,17 @@ const @table = (props: I@tableProps) => {
         ]
     )
 
+    const { getRemoteLayout } = useRemoteLayout();
+    const getLayoutsAsync = useCallback(() => Promise.all([
+        getRemoteLayout('/crm/@table/@tableControls'),
+        getRemoteLayout('/crm/@table/@tableLayout'),
+    ]), [])
+    const { state: layouts, error: layoutsError, status: layoutsStatus } = useAsyncState({
+        asyncFunction: getLayoutsAsync
+    })
+    const [@tableControls, @tableLayout] = layouts || [];
+
+
     const { push } = useSvamHistory()
 
     const [mainFormCustomStore, setMainFormCustomStore] = useState<ISvamCustomStore>({
@@ -817,7 +799,7 @@ const @table = (props: I@tableProps) => {
                     return;
                 }
 
-                push('/@lowerCaseTable', { id: primaryKey })
+                push('/@lowerCaseTable' as any, { id: primaryKey })
 
             }
         },
@@ -828,14 +810,16 @@ const @table = (props: I@tableProps) => {
 
         return <SvamForm
             controls={@tableControls}
+            layout={@tableLayout}
             svamCustomStore={mainFormCustomStore}
         ></SvamForm>
     }
 
     if (isInsert) {
-        return renderMainForm()
+        return <AsyncContainer status={layoutsStatus} error={layoutsError}> {renderMainForm()}  </AsyncContainer>
     }
 
+    
     @mainCompRender
 }
 export default @table
@@ -897,6 +881,46 @@ export default @table
         export default @tableDetails;
         `
 
+
+        const CRMControlsStructure = {
+            Controls: {
+                type: 'folder',
+                nameGetter: (crmTable: CRMTables) => crmTable,
+                children: [
+                    {
+                        nameGetter: (crmTable: CRMTables) => crmTable + 'Controls.ts',
+                        type: 'file',
+                        contentGetter: (crmTable: CRMTables) =>
+                            "import { IEditorProps } from '@svam/forms/SvamForm/SubComponents/Editors/EditorProps';" +
+                            generateControlsString(crmTable, this._crmTableDefs[crmTable]?.controlsDef as any, crmTable + 'Controls')
+
+                    },
+                    {
+                        nameGetter: (crmTable: CRMTables) => crmTable + 'Layout.ts',
+                        type: 'file',
+                        contentGetter: (crmTable: CRMTables) =>
+                            generateBasicLayoutString(crmTable, this._crmTableDefs[crmTable]?.controlsDef as any, crmTable + 'Layout')
+                    },
+                    {
+                        nameGetter: (crmTable: CRMTables) => crmTable + 'FilterControls.ts',
+                        type: 'file',
+                        contentGetter: (crmTable: CRMTables) =>
+                            "import { IEditorProps } from '@svam/forms/SvamForm/SubComponents/Editors/EditorProps';" +
+                            generateControlsString(crmTable, this._crmTableDefs[crmTable]?.filterControlsDef as any, crmTable + 'FilterControls')
+                    },
+                    {
+                        nameGetter: (crmTable: CRMTables) => crmTable + 'Columns.ts',
+                        type: 'file',
+                        contentGetter: (crmTable: CRMTables) =>
+                            "import { ISvamColumnOptions } from '@svam/components/SvamGridTS/SubComponents/SvamColumn/Interfaces/ISvamColumnOptions';" +
+                            generateColumnsString(crmTable, this._crmTableDefs[crmTable]?.columnsDef as any)
+                    }
+                ]
+            }
+        }
+
+
+
         const CRMFolderStructure = {
             ListPage: {
                 type: 'folder',
@@ -906,26 +930,6 @@ export default @table
                         name: 'Components',
                         type: 'folder',
                         children: [
-                            {
-                                type: 'folder',
-                                name: 'layout',
-                                children: [
-                                    {
-                                        type: 'file',
-                                        nameGetter: (crmTable: CRMTables) => crmTable + 'Columns.ts',
-                                        contentGetter: (crmTable: CRMTables) =>
-                                            "import { ISvamColumnOptions } from '@svam/components/SvamGridTS/SubComponents/SvamColumn/Interfaces/ISvamColumnOptions';" +
-                                            generateColumnsString(crmTable, this._crmTableDefs[crmTable]?.columnsDef as any)
-                                    },
-                                    {
-                                        type: 'file',
-                                        nameGetter: (crmTable: CRMTables) => crmTable + 'FilterControls.ts',
-                                        contentGetter: (crmTable: CRMTables) =>
-                                            "import { IEditorProps } from '@svam/forms/SvamForm/SubComponents/Editors/EditorProps';" +
-                                            generateControlsString(crmTable, this._crmTableDefs[crmTable]?.filterControlsDef as any, crmTable + 'FilterControls')
-                                    }
-                                ]
-                            },
                             {
                                 type: 'file',
                                 nameGetter: (crmTable: CRMTables) => crmTable + 'List.tsx',
@@ -960,20 +964,6 @@ export default @table
                         type: 'folder',
                         children: [
                             {
-                                type: 'folder',
-                                name: 'layout',
-                                children: [
-                                    {
-                                        type: 'file',
-                                        nameGetter: (crmTable: CRMTables) => crmTable + 'Controls.ts',
-                                        contentGetter: (crmTable: CRMTables) =>
-                                            "import { IEditorProps } from '@svam/forms/SvamForm/SubComponents/Editors/EditorProps';" +
-                                            generateControlsString(crmTable, this._crmTableDefs[crmTable]?.controlsDef as any, crmTable + 'Controls')
-
-                                    },
-                                ]
-                            },
-                            {
                                 type: 'file',
                                 nameGetter: (crmTable: CRMTables) => crmTable + '.tsx',
                                 contentGetter: (crmTable: CRMTables) => mainCompTemplate
@@ -987,8 +977,6 @@ export default @table
                                     .replace(new RegExp('@primaryKeyDepArray', 'g'), this.getPrimaryKeyDepArray(crmTable))
                                     .replace(new RegExp('@primaryKey', 'g'), this.getPrimaryKeyString(crmTable))
                                     .replace(new RegExp('@primKeyDepArray', 'g'), this.getPrimaryKeyDepArray(crmTable))
-
-
                             },
                             {
                                 type: 'file',
@@ -1066,6 +1054,7 @@ export default @table
         for (const crmTable of crmTables) {
             await generateFileFolder(crmTable, fullCRMPath, CRMFolderStructure.ListPage)
             await generateFileFolder(crmTable, fullCRMPath, CRMFolderStructure.Page)
+            await generateFileFolder(crmTable, rootPath + '/app/layout/crm', CRMControlsStructure.Controls)
         }
 
 

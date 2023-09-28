@@ -18,6 +18,7 @@ import { SPParamsToControlsFetcherController } from './SPParamsToControlsFetcher
 import { AllModelsFetcherController } from './AllModelsFetcher.ts/AllModelsFetcherController';
 import { CRMFetcherController } from './CRMFetcher/CRMFetcherController';
 import { TmpBxSpreaderController } from './TmpBxSpreader/TmpBxSpreaderController';
+import { ControlsFileListenerController } from './#controls-module/controls.file-listener.controller';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -34,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const viewsFetcherController = new ViewFetcherController();
 	const crmFetcherController = new CRMFetcherController();
 	const routeFetcherController = new RoutesModelFetcherController();
-
+	const controlsFileListenerController = new ControlsFileListenerController();
 	let svamSPModelController = new SvamSPFetcherController();
 	test.resolver.resolve(1)
 	let tmpBxSpreaderController = new TmpBxSpreaderController()
@@ -62,6 +63,8 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(sifrarnikController);
 	context.subscriptions.push(crmFetcherController);
 	context.subscriptions.push(tmpBxSpreaderController);
+	context.subscriptions.push(controlsFileListenerController);
+
 
 }
 
